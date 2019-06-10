@@ -34,6 +34,7 @@ import jdk.javadoc.doclet.DocletEnvironment;
 import org.apache.commons.lang3.RegExUtils;
 import org.apache.commons.lang3.StringUtils;
 
+
 public class YmlFilesBuilder {
 
     private final static String[] LANGS = {"java"};
@@ -237,7 +238,8 @@ public class YmlFilesBuilder {
         classReference.setParent(classLookup.extractParent(classElement));
         populateItemFields(classReference, classLookup, classElement);
         classReference.setTypeParameters(classLookup.extractTypeParameters(classElement));
-
+     //   classReference.setPackageName(classLookup.extractPackageName(classElement));
+       
         addTypeParameterReferences(classReference, classMetadataFile);
         addSuperclassAndInterfacesReferences(classElement, classMetadataFile);
         addInnerClassesReferences(classElement, classMetadataFile);
@@ -306,6 +308,7 @@ public class YmlFilesBuilder {
             setName(RegExUtils.removeAll(item.getName(), "\\(.*\\)$"));
             setNameWithType(RegExUtils.removeAll(item.getNameWithType(), "\\(.*\\)$"));
             setFullName(RegExUtils.removeAll(item.getFullName(), "\\(.*\\)$"));
+            setPackageName(item.getPackageName());
         }};
         classMetadataFile.getReferences().add(overloadRefItem);
     }
