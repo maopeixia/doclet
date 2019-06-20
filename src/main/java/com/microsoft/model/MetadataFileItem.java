@@ -33,7 +33,9 @@ public class MetadataFileItem {
     private List<String> interfaces;
     private List<ExceptionItem> exceptions;
     private boolean isExternal;
-
+    @JsonProperty("spec.java")
+    private List<SpecViewModel> specs = new ArrayList<>();
+    
     public MetadataFileItem(String[] langs, String uid) {
         this(uid);
         this.langs = langs;
@@ -50,8 +52,14 @@ public class MetadataFileItem {
         this.fullName = uid;
         this.isExternal = isExternal;
     }
+    
 
-    public String getUid() {
+    public MetadataFileItem(String uid, List<SpecViewModel> javaSpec) {
+    	 this(uid);
+         this.specs = javaSpec;
+	}
+
+	public String getUid() {
         return uid;
     }
 
@@ -195,7 +203,12 @@ public class MetadataFileItem {
         }
         syntax.setParameters(parameters);
     }
-
+    
+    public void setSpec(List<SpecViewModel> spec) {  
+        this.specs=spec;
+    }
+    
+    
     public void setReturn(Return returnValue) {
         if (syntax == null) {
             syntax = new Syntax();
@@ -228,6 +241,6 @@ public class MetadataFileItem {
     
     public String handleOverLoadKey(String value)
     {
-    	return RegExUtils.removeAll(value,"<\\D+>");
+    	 return RegExUtils.removeAll(value,"<\\w+(,\\s*\\w+)*>");
     }
 }

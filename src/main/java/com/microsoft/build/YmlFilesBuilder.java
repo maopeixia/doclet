@@ -6,6 +6,7 @@ import com.microsoft.lookup.ClassLookup;
 import com.microsoft.lookup.PackageLookup;
 import com.microsoft.model.MetadataFile;
 import com.microsoft.model.MetadataFileItem;
+import com.microsoft.model.SpecViewModel;
 import com.microsoft.model.TocFile;
 import com.microsoft.model.TocItem;
 import com.microsoft.util.ElementUtil;
@@ -30,7 +31,11 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.ElementFilter;
+import javax.tools.Diagnostic.Kind;
+
 import jdk.javadoc.doclet.DocletEnvironment;
+import jdk.javadoc.doclet.Reporter;
+
 import org.apache.commons.lang3.RegExUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -238,7 +243,6 @@ public class YmlFilesBuilder {
         classReference.setParent(classLookup.extractParent(classElement));
         populateItemFields(classReference, classLookup, classElement);
         classReference.setTypeParameters(classLookup.extractTypeParameters(classElement));
-     //   classReference.setPackageName(classLookup.extractPackageName(classElement));
        
         addTypeParameterReferences(classReference, classMetadataFile);
         addSuperclassAndInterfacesReferences(classElement, classMetadataFile);
@@ -332,11 +336,11 @@ public class YmlFilesBuilder {
         while (iterator.hasNext()) {
             MetadataFileItem item = iterator.next();
             String uid = item.getUid();
-            if (!uid.endsWith("*") && uid.contains("<")) {
-                List<String> classNames = splitUidWithGenericsIntoClassNames(uid);
-                additionalItems.addAll(classNames.stream()
-                    .map(s -> new MetadataFileItem(s, classLookup.makeTypeShort(s), true))
-                    .collect(Collectors.toSet()));
+            if (!uid.endsWith("*") && uid.contains("<")) {            	
+	                List<String> classNames = splitUidWithGenericsIntoClassNames(uid);
+	                additionalItems.addAll(classNames.stream()
+	                    .map(s -> new MetadataFileItem(s, classLookup.makeTypeShort(s), true))
+	                    .collect(Collectors.toSet()));           	
             }
         }
         // Remove items which already exist in 'items' section (compared by 'uid' field)
@@ -416,6 +420,36 @@ public class YmlFilesBuilder {
 
     MetadataFileItem buildRefItem(String value) {
         value = RegExUtils.removeAll(value, "\\[\\]$");
+        if (!value.endsWith("*") && value.contains("<")) {
+        	return new MetadataFileItem(value,getJavaSpec(replaceUidAndSplit(value)));
+        }
+        else
         return new MetadataFileItem(value, classLookup.makeTypeShort(value), true);
     }
+    
+    List<String> replaceUidAndSplit(String value)
+    {
+    	String retValue= RegExUtils.replaceAll(value,"\\<",",<,");
+    	retValue = RegExUtils.replaceAll(retValue,"\\>",",>,");
+    	return  Arrays.asList(StringUtils.split(retValue, ",")); 
+    }
+    
+    List<SpecViewModel> getJavaSpec(List<String> value)
+    {
+    	List<SpecViewModel> returnList = new ArrayList<>();
+    
+    	   Optional.ofNullable(value).ifPresent(
+                   Params -> Params.forEach(
+                       param -> {
+                         if(param.equalsIgnoreCase("<") || param.equalsIgnoreCase(">"))
+                         returnList.add(new SpecViewModel(param,param));
+                         else if (param!="")
+                         returnList.add(new SpecViewModel(param,param,param));
+                       })
+               );
+    	   
+        return returnList;
+    }
+    
+    
 }
