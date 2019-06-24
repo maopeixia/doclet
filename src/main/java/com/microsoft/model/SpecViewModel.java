@@ -58,14 +58,11 @@ public class SpecViewModel {
                 	   List<String> strList =new ArrayList<>();
                 	   strList = Arrays.asList(StringUtils.split(Param, "."));
                 	   Collections.reverse(strList);
-                	   String s1= strList.get(0);
                 	   singleValue.append(strList.get(0));
                    }
                );
     	   
         return singleValue.toString();
     }
-    
-    
-    
+       
 }
