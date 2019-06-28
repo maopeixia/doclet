@@ -12,8 +12,10 @@ import com.microsoft.model.TocItem;
 import com.microsoft.util.ElementUtil;
 import com.microsoft.util.FileUtil;
 import com.microsoft.util.YamlUtil;
+
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -52,6 +54,7 @@ public class YmlFilesBuilder {
     private PackageLookup packageLookup;
     private ClassItemsLookup classItemsLookup;
     private ClassLookup classLookup;
+    private List<MetadataFileItem> classRefList =  new ArrayList<>();
 
     public YmlFilesBuilder(DocletEnvironment environment, String outputPath,
         String[] excludePackages, String[] excludeClasses) {
@@ -68,6 +71,11 @@ public class YmlFilesBuilder {
         List<MetadataFile> classMetadataFiles = new ArrayList<>();
 
         TocFile tocFile = new TocFile(outputPath);
+        
+        for (PackageElement packageElement : elementUtil.extractPackageElements(environment.getIncludedElements())) {
+        	setClassinfoTocache(packageElement);
+        }
+        
         for (PackageElement packageElement : elementUtil.extractPackageElements(environment.getIncludedElements())) {
             String uid = packageLookup.extractUid(packageElement);
             packageMetadataFiles.add(buildPackageMetadataFile(packageElement));
@@ -88,7 +96,10 @@ public class YmlFilesBuilder {
                 }
             }
         }
-
+        
+     //   List<String> ls = new ArrayList<>();
+     //   ls=GetInheritance("com.microsoft.samples.AggregatePartnerOperations",ls);
+        
         populateUidValues(packageMetadataFiles, classMetadataFiles);
 
         packageMetadataFiles.forEach(FileUtil::dumpToFile);
@@ -97,14 +108,22 @@ public class YmlFilesBuilder {
 
         return true;
     }
-
+    
+    void setClassinfoTocache(Element element)
+    {
+    	 for (TypeElement classElement : elementUtil.extractSortedElements(element)) {
+    		 MetadataFile item = addCacheClassInfo(classElement);
+    		 classRefList.addAll(item.getItems());
+    	 }
+    }
+    
     void buildFilesForInnerClasses(Element element, List<TocItem> listToAddItems, List<MetadataFile> container) {
         for (TypeElement classElement : elementUtil.extractSortedElements(element)) {
             String uid = classLookup.extractUid(classElement);
             String name = classLookup.extractTocName(classElement);
 
             listToAddItems.add(new TocItem(uid, name));
-
+            
             container.add(buildClassYmlFile(classElement));
             buildFilesForInnerClasses(classElement, listToAddItems, container);
         }
@@ -159,6 +178,13 @@ public class YmlFilesBuilder {
         applyPostProcessing(classMetadataFile);
         return classMetadataFile;
     }
+    
+    MetadataFile addCacheClassInfo(TypeElement classElement) {
+    	  String fileName = classLookup.extractHref(classElement);
+          MetadataFile classMetadataFile = new MetadataFile(outputPath, fileName);  
+          addClassInfo(classElement, classMetadataFile);
+          return classMetadataFile;
+    }
 
     void addClassInfo(TypeElement classElement, MetadataFile classMetadataFile) {
         MetadataFileItem classItem = new MetadataFileItem(LANGS, classLookup.extractUid(classElement));
@@ -168,11 +194,18 @@ public class YmlFilesBuilder {
         populateItemFields(classItem, classLookup, classElement);
         classItem.setPackageName(classLookup.extractPackageName(classElement));
         classItem.setTypeParameters(classLookup.extractTypeParameters(classElement));
-        classItem.setInheritance(classLookup.extractSuperclass(classElement));
+        
+        List<String> inherits = new ArrayList<>();
+        String inheritance=classLookup.extractSuperclass(classElement);
+        Optional.ofNullable(inheritance).ifPresent(param->{
+        	            inherits.add(param);
+        	            classItem.setInheritance(GetInheritance(param,inherits));
+                       });
+             
         classItem.setInterfaces(classLookup.extractInterfaces(classElement));
         classMetadataFile.getItems().add(classItem);
     }
-
+    
     void addChildren(TypeElement classElement, List<String> children) {
         collect(classElement, children, ElementFilter::constructorsIn, classItemsLookup::extractUid);
         collect(classElement, children, ElementFilter::methodsIn, classItemsLookup::extractUid);
@@ -450,6 +483,31 @@ public class YmlFilesBuilder {
     	   
         return returnList;
     }
+         
+    MetadataFileItem getClassElement(String uid)
+    {      	
+    	Optional<MetadataFileItem> item = classRefList.stream().filter(i -> i.getUid().equalsIgnoreCase(uid)).findFirst();
+    	
+    	if(item.isEmpty())
+    		return new MetadataFileItem("");
+    	else
+         	return item.get();
     
+    }
     
+    List<String> GetInheritance(String uid,List<String> listValue)
+    {
+    	List<String> upperclass = getClassElement(uid).getInheritance();
+    	Optional.ofNullable(upperclass).ifPresent
+    	              (param ->{ 
+    	            	   String item = param.get(0);
+    	            	   listValue.add(item);   
+    	            	   GetInheritance(item,listValue);
+    	              }  
+    	          );
+    	
+    	 Collections.reverse(listValue); 
+    	 
+    	 return listValue;
+    }
 }
