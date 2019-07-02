@@ -182,8 +182,18 @@ public class YmlFilesBuilder {
     MetadataFile addCacheClassInfo(TypeElement classElement) {
     	  String fileName = classLookup.extractHref(classElement);
           MetadataFile classMetadataFile = new MetadataFile(outputPath, fileName);  
-          addClassInfo(classElement, classMetadataFile);
+          addClassCacheItem(classElement, classMetadataFile);
           return classMetadataFile;
+    }
+    
+    void addClassCacheItem(TypeElement classElement, MetadataFile classMetadataFile)
+    {
+    	MetadataFileItem classItem = new MetadataFileItem(LANGS, classLookup.extractUid(classElement));
+        String inheritance=classLookup.extractSuperclass(classElement);
+        Optional.ofNullable(inheritance).ifPresent(param->{
+        classItem.setInheritance(Arrays.asList(StringUtils.split(inheritance,'<')[0]));   
+        });
+        classMetadataFile.getItems().add(classItem);
     }
 
     void addClassInfo(TypeElement classElement, MetadataFile classMetadataFile) {
@@ -198,8 +208,11 @@ public class YmlFilesBuilder {
         List<String> inherits = new ArrayList<>();
         String inheritance=classLookup.extractSuperclass(classElement);
         Optional.ofNullable(inheritance).ifPresent(param->{
-        	            inherits.add(param);
-        	            classItem.setInheritance(GetInheritance(param,inherits));
+        	            String singleInherintance=StringUtils.split(inheritance,'<')[0];
+        	            inherits.add(singleInherintance);
+        	            List<String> inheritances = GetInheritance(singleInherintance,inherits);
+        	            Collections.reverse(inheritances);
+        	            classItem.setInheritance(inheritances);
                        });
              
         classItem.setInterfaces(classLookup.extractInterfaces(classElement));
@@ -505,9 +518,7 @@ public class YmlFilesBuilder {
     	            	   GetInheritance(item,listValue);
     	              }  
     	          );
-    	
-    	 Collections.reverse(listValue); 
-    	 
+    	   	 
     	 return listValue;
     }
 }
