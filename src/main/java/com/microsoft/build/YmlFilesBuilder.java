@@ -96,10 +96,7 @@ public class YmlFilesBuilder {
                 }
             }
         }
-        
-     //   List<String> ls = new ArrayList<>();
-     //   ls=GetInheritance("com.microsoft.samples.AggregatePartnerOperations",ls);
-        
+                
         populateUidValues(packageMetadataFiles, classMetadataFiles);
 
         packageMetadataFiles.forEach(FileUtil::dumpToFile);
@@ -189,9 +186,9 @@ public class YmlFilesBuilder {
     void addClassCacheItem(TypeElement classElement, MetadataFile classMetadataFile)
     {
     	MetadataFileItem classItem = new MetadataFileItem(LANGS, classLookup.extractUid(classElement));
-        String inheritance=classLookup.extractSuperclass(classElement);
-        Optional.ofNullable(inheritance).ifPresent(param->{
-        classItem.setInheritance(Arrays.asList(StringUtils.split(inheritance,'<')[0]));   
+    	var superclass = (TypeElement) environment.getTypeUtils().asElement(classElement.getSuperclass());
+        Optional.ofNullable(superclass).ifPresent(param->{
+        classItem.setInheritance(Arrays.asList(superclass.getQualifiedName().toString()));   
         });
         classMetadataFile.getItems().add(classItem);
     }
@@ -206,9 +203,9 @@ public class YmlFilesBuilder {
         classItem.setTypeParameters(classLookup.extractTypeParameters(classElement));
         
         List<String> inherits = new ArrayList<>();
-        String inheritance=classLookup.extractSuperclass(classElement);
-        Optional.ofNullable(inheritance).ifPresent(param->{
-        	            String singleInherintance=StringUtils.split(inheritance,'<')[0];
+        var superclass = (TypeElement) environment.getTypeUtils().asElement(classElement.getSuperclass());
+        Optional.ofNullable(superclass).ifPresent(param->{
+        	            String singleInherintance=param.getQualifiedName().toString();
         	            inherits.add(singleInherintance);
         	            List<String> inheritances = GetInheritance(singleInherintance,inherits);
         	            Collections.reverse(inheritances);
