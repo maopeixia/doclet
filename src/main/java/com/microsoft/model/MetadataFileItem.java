@@ -9,7 +9,7 @@ import java.util.List;
 import org.apache.commons.lang3.RegExUtils;
 
 @JsonPropertyOrder({"uid", "id", "parent", "children", "href", "langs", "isExternal", "name", "nameWithType",
-    "fullName", "overload", "type", "package", "summary", "syntax", "inheritance", "implements", "exceptions",
+    "fullName", "overload", "type", "package", "summary", "syntax", "inheritance", "implements","inheritedMembers","exceptions",
     "spec.java"})
 public class MetadataFileItem {
 
@@ -31,6 +31,7 @@ public class MetadataFileItem {
     private List<String> inheritance;
     @JsonProperty("implements")
     private List<String> interfaces;
+    private List<String> inheritedMembers;
     private List<ExceptionItem> exceptions;
     private boolean isExternal;
     @JsonProperty("spec.java")
@@ -72,7 +73,7 @@ public class MetadataFileItem {
     }
 
     public String getParent() {
-        return parent;
+        return (parent==null) ? "" : parent;
     }
 
     public void setParent(String parent) {
@@ -128,7 +129,7 @@ public class MetadataFileItem {
     }
 
     public String getType() {
-        return type;
+        return (type==null) ? "" : type;
     }
 
     public void setType(String type) {
@@ -162,9 +163,17 @@ public class MetadataFileItem {
     public List<String> getInheritance() {
         return inheritance;
     }
-
+    
     public void setInheritance(List<String> superclass) {
         this.inheritance = (superclass == null) ? null : superclass;
+    }
+
+    public List<String> getInheritedMembers() {
+        return inheritedMembers;
+    }
+    
+    public void setInheritedMembers(List<String> superclassmethod) {
+        this.inheritedMembers = (superclassmethod == null) ? null : superclassmethod;
     }
 
     public List<String> getInterfaces() {
@@ -174,7 +183,7 @@ public class MetadataFileItem {
     public void setInterfaces(List<String> interfaces) {
         this.interfaces = interfaces;
     }
-
+    
     public List<ExceptionItem> getExceptions() {
         return exceptions;
     }

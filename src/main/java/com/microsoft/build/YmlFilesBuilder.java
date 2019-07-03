@@ -109,11 +109,18 @@ public class YmlFilesBuilder {
     void setClassinfoTocache(Element element)
     {
     	 for (TypeElement classElement : elementUtil.extractSortedElements(element)) {
-    		 MetadataFile item = addCacheClassInfo(classElement);
-    		 classRefList.addAll(item.getItems());
+    		 MetadataFile classitem = addCacheClassInfo(classElement);
+    		 addMethodsInfoTocache(classElement,classitem);
+    		 classRefList.addAll(classitem.getItems());
     	 }
+    	 
+    	/* for (MetadataFileItem a : classRefList )
+    	 {
+    		 
+    		 String s="";
+    	 }*/
     }
-    
+      
     void buildFilesForInnerClasses(Element element, List<TocItem> listToAddItems, List<MetadataFile> container) {
         for (TypeElement classElement : elementUtil.extractSortedElements(element)) {
             String uid = classLookup.extractUid(classElement);
@@ -186,11 +193,26 @@ public class YmlFilesBuilder {
     void addClassCacheItem(TypeElement classElement, MetadataFile classMetadataFile)
     {
     	MetadataFileItem classItem = new MetadataFileItem(LANGS, classLookup.extractUid(classElement));
-    	var superclass = (TypeElement) environment.getTypeUtils().asElement(classElement.getSuperclass());
+        populateItemFields(classItem, classLookup, classElement);
+        classItem.setId(classLookup.extractId(classElement));
+        classItem.setParent(classLookup.extractParent(classElement));
+        
+        var superclass = (TypeElement) environment.getTypeUtils().asElement(classElement.getSuperclass());
         Optional.ofNullable(superclass).ifPresent(param->{
         classItem.setInheritance(Arrays.asList(superclass.getQualifiedName().toString()));   
         });
+  
         classMetadataFile.getItems().add(classItem);
+    }
+    
+    void addMethodsInfoTocache(TypeElement classElement, MetadataFile classMetadataFile)
+    {
+    	 ElementFilter.methodsIn(classElement.getEnclosedElements()).stream()
+         .filter(methodElement -> !methodElement.getModifiers().contains(Modifier.PRIVATE))
+         .forEach(methodElement -> {
+             MetadataFileItem methodItem = buildMetadataFileItem(methodElement);
+             classMetadataFile.getItems().add(methodItem);
+         });
     }
 
     void addClassInfo(TypeElement classElement, MetadataFile classMetadataFile) {
@@ -203,6 +225,7 @@ public class YmlFilesBuilder {
         classItem.setTypeParameters(classLookup.extractTypeParameters(classElement));
         
         List<String> inherits = new ArrayList<>();
+        List<String> inheritsmember = new ArrayList<>();
         var superclass = (TypeElement) environment.getTypeUtils().asElement(classElement.getSuperclass());
         Optional.ofNullable(superclass).ifPresent(param->{
         	            String singleInherintance=param.getQualifiedName().toString();
@@ -210,7 +233,11 @@ public class YmlFilesBuilder {
         	            List<String> inheritances = GetInheritance(singleInherintance,inherits);
         	            Collections.reverse(inheritances);
         	            classItem.setInheritance(inheritances);
+        	            
+        	            List<String> inheritancesmembers=GetInheritanceMethod(singleInherintance,inheritsmember);
+        	            classItem.setInheritedMembers(inheritancesmembers);       	            
                        });
+        
              
         classItem.setInterfaces(classLookup.extractInterfaces(classElement));
         classMetadataFile.getItems().add(classItem);
@@ -290,6 +317,7 @@ public class YmlFilesBuilder {
         addTypeParameterReferences(classReference, classMetadataFile);
         addSuperclassAndInterfacesReferences(classElement, classMetadataFile);
         addInnerClassesReferences(classElement, classMetadataFile);
+        addInheritanceExtendReferences(classElement,classMetadataFile);    
     }
 
     MetadataFileItem buildMetadataFileItem(Element element) {
@@ -358,6 +386,28 @@ public class YmlFilesBuilder {
             setPackageName(item.getPackageName());
         }};
         classMetadataFile.getReferences().add(overloadRefItem);
+    }
+    
+    void addInheritanceExtendReferences(TypeElement classElement, MetadataFile classMetadataFile) {
+    	var superclass = (TypeElement) environment.getTypeUtils().asElement(classElement.getSuperclass());
+    	
+    	 Optional.ofNullable(superclass).ifPresent(param->{
+                       String singleInherintance=param.getQualifiedName().toString();
+                       List<MetadataFileItem> upperclasslist = new ArrayList<>(); 
+                       List<MetadataFileItem> upperclassmemberlist = new ArrayList<>();
+                       
+                       classMetadataFile.getReferences().addAll(
+                    		   GetInheritanceList(singleInherintance,upperclasslist).stream()
+                               .map(Item -> buildRefItem(Item.getUid()))
+                               .filter(o -> !classMetadataFile.getItems().contains(o))
+                               .collect(Collectors.toList()));
+                       
+                      classMetadataFile.getReferences().addAll(
+                    		  GetInheritanceMethodList(singleInherintance,upperclassmemberlist).stream()
+                               .map(Item -> buildRefItem(Item.getUid()))
+                               .filter(o -> !classMetadataFile.getItems().contains(o))
+                               .collect(Collectors.toList()));
+            });
     }
 
     void applyPostProcessing(MetadataFile classMetadataFile) {
@@ -515,6 +565,64 @@ public class YmlFilesBuilder {
     	            	   GetInheritance(item,listValue);
     	              }  
     	          );
+    	   	 
+    	 return listValue;
+    }
+    
+    List<MetadataFileItem> GetInheritanceList(String uid,List<MetadataFileItem> listValue)
+    {
+    	List<String> upperclass = getClassElement(uid).getInheritance();
+    	List<MetadataFileItem> upperclasslist =  classRefList.stream().filter(i -> i.getUid().equalsIgnoreCase(uid)
+                                                 && i.getType().equalsIgnoreCase("Class")).collect(Collectors.toList());
+    
+    	Optional.ofNullable(upperclasslist).ifPresent
+    	                   (params -> { listValue.addAll(params);});
+    	
+    	Optional.ofNullable(upperclass).ifPresent
+         (param ->{ 
+	     	   String item = param.get(0);  
+	     	   GetInheritanceList(item,listValue);
+            }  
+          );    
+    	
+    	 return listValue;
+    }
+    
+    List<String> GetInheritanceMethod(String uid,List<String> listValue)
+    {
+    	List<String> upperclass = getClassElement(uid).getInheritance();
+    	List<MetadataFileItem> upperclassmethod =  classRefList.stream().filter(i -> i.getParent().equalsIgnoreCase(uid)
+    			                         && i.getType().equalsIgnoreCase("Method")).collect(Collectors.toList());
+    	
+    	Optional.ofNullable(upperclassmethod).ifPresent
+    	              (params -> params.forEach(param->
+    	            	    {listValue.add(param.getUid());}));
+    	            	   
+    	Optional.ofNullable(upperclass).ifPresent
+                       (param ->{ 
+				     	   String item = param.get(0);  
+				     	   GetInheritanceMethod(item,listValue);
+                        }  
+                   );    
+    	   	 
+    	 return listValue;
+    }
+    
+    List<MetadataFileItem> GetInheritanceMethodList(String uid,List<MetadataFileItem> listValue)
+    {
+    	List<String> upperclass = getClassElement(uid).getInheritance();
+    	List<MetadataFileItem> upperclassmethod =  classRefList.stream().filter(i -> i.getParent().equalsIgnoreCase(uid)
+    			                         && i.getType().equalsIgnoreCase("Method")).collect(Collectors.toList());
+    	
+    	Optional.ofNullable(upperclassmethod).ifPresent
+    	              (params -> { listValue.addAll(params);});
+    	            	   
+    	Optional.ofNullable(upperclass).ifPresent
+                       (param ->{ 
+				     	   String item = param.get(0);  
+				     	   GetInheritanceMethodList(item,listValue);
+                        }  
+                   );    
     	   	 
     	 return listValue;
     }

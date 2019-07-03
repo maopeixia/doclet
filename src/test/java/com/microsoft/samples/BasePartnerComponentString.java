@@ -32,4 +32,10 @@ public abstract class BasePartnerComponentString
     {
         super( rootPartnerOperations, componentContext );
     }
+    
+    public String getxy()
+    {
+    	return "";
+    }
+    
 }
