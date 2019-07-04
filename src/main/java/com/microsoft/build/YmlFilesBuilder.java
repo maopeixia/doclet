@@ -113,12 +113,6 @@ public class YmlFilesBuilder {
     		 addMethodsInfoTocache(classElement,classitem);
     		 classRefList.addAll(classitem.getItems());
     	 }
-    	 
-    	/* for (MetadataFileItem a : classRefList )
-    	 {
-    		 
-    		 String s="";
-    	 }*/
     }
       
     void buildFilesForInnerClasses(Element element, List<TocItem> listToAddItems, List<MetadataFile> container) {
@@ -522,9 +516,10 @@ public class YmlFilesBuilder {
     
     List<String> replaceUidAndSplit(String value)
     {
-    	String retValue= RegExUtils.replaceAll(value,"\\<",",<,");
-    	retValue = RegExUtils.replaceAll(retValue,"\\>",",>,");
-    	return  Arrays.asList(StringUtils.split(retValue, ",")); 
+    	String retValue= RegExUtils.replaceAll(value,"\\<","//<//");
+    	retValue = RegExUtils.replaceAll(retValue,"\\>","//>//");
+    	retValue = RegExUtils.replaceAll(retValue,",","//,//");
+    	return  Arrays.asList(StringUtils.split(retValue, "//")); 
     }
     
     List<SpecViewModel> getJavaSpec(List<String> value)
@@ -534,7 +529,7 @@ public class YmlFilesBuilder {
     	   Optional.ofNullable(value).ifPresent(
                    Params -> Params.forEach(
                        param -> {
-                         if(param.equalsIgnoreCase("<") || param.equalsIgnoreCase(">"))
+                         if(param.equalsIgnoreCase("<") || param.equalsIgnoreCase(">") || param.equalsIgnoreCase(",") )
                          returnList.add(new SpecViewModel(param,param));
                          else if (param!="")
                          returnList.add(new SpecViewModel(param,param,param));
